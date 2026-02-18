@@ -40,6 +40,14 @@ class ScanConfig(BaseModel):
         default="quick",
         description="Scan mode"
     )
+    plugins: Optional[list[str]] = Field(
+        default=None,
+        description="List of plugin IDs to run (None = all)"
+    )
+    max_attacks_per_plugin: int = Field(
+        default=10,
+        description="Maximum attacks per plugin"
+    )
     max_requests: int = Field(
         default=50,
         description="Maximum number of requests"

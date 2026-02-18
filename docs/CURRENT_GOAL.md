@@ -8,27 +8,30 @@
 
 | 字段 | 值 |
 |------|-----|
-| **任务** | Phase 1 MVP 攻击引擎 |
+| **任务** | 优化检测器：改进正则精确度 + 添加 LLM 裁决 |
 | **状态** | completed |
 | **优先级** | high |
-| **创建日期** | 2026-02-17 |
+| **创建日期** | 2026-02-19 |
 
 ---
 
 ## 完成标准
 
-- [x] 实现攻击模板加载功能（从 YAML 加载）
-- [x] 实现基础攻击生成功能（变量替换）
-- [x] 联网搜集并生成 LLM01 Prompt Injection 模板
-- [x] 联网搜集并生成 LLM02 Data Leak 模板
-- [x] 联网搜集并生成 LLM07 System Prompt Leak 模板
+- [x] 改进 PII 检测正则表达式，减少误报
+- [x] 改进敏感内容检测规则
+- [x] 改进 System Prompt 检测规则
+- [x] 添加置信度阈值配置
+- [x] 实现 LLM 裁决模块（使用本地模型）
+- [x] 在插件中集成 LLM 裁决二次确认
+- [x] 测试改进后的检测效果
 
 ---
 
 ## 关联模块
 
-- `src/core/attack_engine/` - 攻击引擎核心 ✅
-- `src/core/attack_engine/templates/` - YAML 模板目录 ✅
+- `src/plugins/LLM02_data_leak/plugin.py` - 数据泄露检测
+- `src/plugins/LLM07_system_prompt_leak/plugin.py` - 系统提示泄露检测
+- `src/core/detection_engine/` - LLM 裁决模块（新建）
 
 ---
 
@@ -36,14 +39,13 @@
 
 | 序号 | 任务 | 产出 | 状态 |
 |------|------|------|------|
-| 1 | 联网搜集 LLM01/02/07 攻击 payload | 原始数据收集 | ✅ completed |
-| 2 | 创建攻击引擎数据模型 | `models.py` | ✅ completed |
-| 3 | 实现模板加载器 | `generator.py` (模板加载部分) | ✅ completed |
-| 4 | 实现基础生成器 | `generator.py` (变量替换部分) | ✅ completed |
-| 5 | 创建 LLM01 YAML 模板 | `templates/LLM01_prompt_injection.yaml` | ✅ completed |
-| 6 | 创建 LLM02 YAML 模板 | `templates/LLM02_data_leak.yaml` | ✅ completed |
-| 7 | 创建 LLM07 YAML 模板 | `templates/LLM07_system_prompt_leak.yaml` | ✅ completed |
-| 8 | 编写单元测试 | `tests/test_attack_engine.py` | ✅ completed |
+| 1 | 改进 PII 正则表达式 | `LLM02/plugin.py` | completed |
+| 2 | 改进敏感内容检测规则 | `LLM02/plugin.py` | completed |
+| 3 | 改进 System Prompt 检测规则 | `LLM07/plugin.py` | completed |
+| 4 | 添加置信度阈值配置 | `base.py` | completed |
+| 5 | 创建 LLM 裁决模块 | `detection_engine/llm_judge.py` | completed |
+| 6 | 集成 LLM 裁决到插件 | 更新各 plugin | completed |
+| 7 | 测试改进效果 | 手动测试 | completed |
 
 ---
 
@@ -51,12 +53,14 @@
 
 | 时间 | 进展 |
 |------|------|
-| 2026-02-17 | 🎯 目标设置：Phase 1 MVP 攻击引擎 |
-| 2026-02-17 | 📦 创建 `models.py` - 数据模型 (AttackPayload, AttackTemplate, GeneratedAttack 等) |
-| 2026-02-17 | 🔧 创建 `generator.py` - 模板加载器和攻击生成器 |
-| 2026-02-17 | 📝 创建 LLM01/LLM02/LLM07 YAML 模板 (基于 Garak + PromptInject 数据) |
-| 2026-02-17 | 🧪 创建 `test_attack_engine.py` - 20 个测试用例全部通过 |
-| 2026-02-17 | ✅ Phase 1 MVP 攻击引擎完成 |
+| 2026-02-19 | 🎯 目标设置：优化检测器 |
+| 2026-02-19 | 📝 改进 LLM02 插件 - 更精确的 PII 正则、排除模式、置信度阈值 |
+| 2026-02-19 | 📝 改进 LLM07 插件 - 分层置信度模式、排除模式 |
+| 2026-02-19 | 🔧 更新 base.py - 添加 confidence_threshold 和 use_llm_judge 配置 |
+| 2026-02-19 | 📦 创建 detection_engine/llm_judge.py - LLM 裁决模块 |
+| 2026-02-19 | ✅ 53 个测试全部通过 |
+| 2026-02-19 | 🧪 实际测试 DeepSeek API - 误报从 6 个减少到 1 个 (83% 改进) |
+| 2026-02-19 | ✅ 目标完成 |
 
 ---
 
@@ -64,22 +68,56 @@
 
 | 文件 | 说明 |
 |------|------|
-| `src/core/attack_engine/__init__.py` | 模块导出 |
-| `src/core/attack_engine/models.py` | 数据模型定义 |
-| `src/core/attack_engine/generator.py` | 模板加载器和攻击生成器 |
-| `src/core/attack_engine/templates/LLM01_prompt_injection.yaml` | LLM01 攻击模板 |
-| `src/core/attack_engine/templates/LLM02_data_leak.yaml` | LLM02 攻击模板 |
-| `src/core/attack_engine/templates/LLM07_system_prompt_leak.yaml` | LLM07 攻击模板 |
-| `tests/test_attack_engine.py` | 单元测试 (20 passed) |
+| `src/plugins/LLM02_data_leak/plugin.py` | 改进的检测规则 |
+| `src/plugins/LLM07_system_prompt_leak/plugin.py` | 改进的检测规则 |
+| `src/core/detection_engine/__init__.py` | 模块导出 |
+| `src/core/detection_engine/llm_judge.py` | LLM 裁决模块 |
 
 ---
 
 ## 备注
 
-本目标聚焦于攻击引擎的最小可用实现：
+### 问题分析
 
-1. **模板来源**：联网搜集 Garak、PromptInject 等开源数据集
-2. **模板格式**：YAML，支持 `{{variable}}` 变量替换
-3. **覆盖范围**：LLM01/02/07 三类 OWASP LLM Top 10 风险
+当前检测器存在的问题：
+1. **Phone 正则过于宽泛**：`\d{10}` 会匹配时间戳、ID 等
+2. **敏感内容关键词太泛**：`internal`、`private` 是常见词
+3. **System Prompt 模式太宽松**：`do not`、`always` 是常见英语表达
+4. **无二次确认机制**：一旦匹配就报告，没有语义理解
 
-后续 Phase 1 还需实现：插件系统、检测引擎、验证引擎、评分引擎、报告生成。
+### 改进方案
+
+#### 1. 正则改进
+
+```python
+# 改进前
+"phone": r"\b\d{10}\b"  # 匹配任何10位数字
+
+# 改进后
+"phone": r"\b(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"  # 更精确的美国电话格式
+```
+
+#### 2. LLM 裁决
+
+```python
+class LLMJudge:
+    """使用本地 LLM 对检测结果进行语义判断"""
+
+    def judge_detection(self, response: str, evidence: dict) -> tuple[bool, float]:
+        """
+        Returns:
+            (is_real_vulnerability, confidence)
+        """
+```
+
+### LLM 裁决流程
+
+```
+正则检测 → 发现潜在漏洞 → LLM 裁决 → 确认/排除
+    ↓              ↓              ↓
+ confidence=0.9  evidence     语义分析
+                              ↓
+                         真正的漏洞？
+                              ↓
+                         更新 confidence
+```

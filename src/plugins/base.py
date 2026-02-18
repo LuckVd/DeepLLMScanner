@@ -54,6 +54,16 @@ class PluginConfig(BaseModel):
     enabled: bool = Field(default=True, description="Whether plugin is enabled")
     max_attacks: int = Field(default=100, description="Maximum attacks to generate")
     timeout_seconds: float = Field(default=30.0, description="Timeout for plugin execution")
+    confidence_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence to report vulnerability (0.0-1.0)"
+    )
+    use_llm_judge: bool = Field(
+        default=False,
+        description="Use LLM judge for secondary validation"
+    )
     severity_override: Optional[AttackSeverity] = Field(
         default=None, description="Override default severity"
     )

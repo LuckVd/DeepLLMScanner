@@ -61,7 +61,7 @@ class TemplateLoader:
                 console.print(f"[red]Error loading {yaml_file}:[/red] {e}")
 
         self._loaded = True
-        console.print(f"[green]✓[/green] Loaded {len(self._templates)} attack templates")
+        console.print(f"[green]+[/green] Loaded {len(self._templates)} attack templates")
         return self._templates
 
     def _load_yaml_file(self, filepath: Path) -> None:

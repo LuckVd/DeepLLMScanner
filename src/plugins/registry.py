@@ -53,7 +53,7 @@ class PluginRegistry:
         self._plugin_classes[plugin_id] = plugin_class
         self._categories[instance.category].append(plugin_id)
 
-        console.print(f"[green]✓[/green] Registered plugin: {plugin_id} ({instance.name})")
+        console.print(f"[green]+[/green] Registered plugin: {plugin_id} ({instance.name})")
         return plugin_id
 
     def unregister(self, plugin_id: str) -> bool:
@@ -192,7 +192,7 @@ class PluginRegistry:
                 except Exception as e:
                     console.print(f"[red]Error scanning {module_name}:[/red] {e}")
 
-        console.print(f"[green]✓[/green] Auto-discovered {discovered} plugins")
+        console.print(f"[green]+[/green] Auto-discovered {discovered} plugins")
         return discovered
 
     def configure_plugin(self, plugin_id: str, config: PluginConfig) -> bool:
