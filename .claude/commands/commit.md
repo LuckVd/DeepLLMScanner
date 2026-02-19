@@ -114,7 +114,7 @@ git add <files>
 - `deps` - 依赖
 - `config` - 配置
 
-**Breaking Change：** 使用 `!` 或 footer `BREAKING CHANGE:`
+**Breaking Change：** 在 type 后使用感叹号，或在 footer 添加 `BREAKING CHANGE:`
 
 ### 7. 执行 Commit
 
