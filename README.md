@@ -1,101 +1,183 @@
 # DeepLLMScanner
 
-> CPU-only 可运行 | 本地 7B-13B 4bit 模型增强 | 多层检测 + 验证驱动 | 覆盖 OWASP LLM Top 10
+> CPU-only | Local 7B-13B 4bit Model Enhanced | Multi-layer Detection | OWASP LLM Top 10 Coverage
 
-DeepLLMScanner 是一个面向 LLM 应用安全的动态安全测试（DAST）框架。
+DeepLLMScanner is a Dynamic Application Security Testing (DAST) framework for LLM applications.
 
-## 特性
+## Features
 
-- **CPU-only** - 无需 GPU，在普通服务器上即可运行
-- **本地模型增强** - 使用本地 LLM 进行智能攻击生成和响应分析
-- **多层检测** - 规则 + Embedding + LLM 三层检测体系
-- **验证驱动** - 反向验证降低误报率
-- **OWASP LLM Top 10** - 覆盖全部 10 类 LLM 安全风险
+- **CPU-only** - No GPU required, runs on standard servers
+- **Local LLM Enhanced** - Uses local models for intelligent attack generation and response analysis
+- **Multi-layer Detection** - Rule + Embedding + LLM three-tier detection system
+- **Validation Driven** - Reverse validation to reduce false positives
+- **OWASP LLM Top 10** - Covers all 10 LLM security risk categories
+- **Multi-turn Attacks** - State engine for sophisticated conversation-based attacks
 
-## 安装
+## Installation
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-org/DeepLLMScanner.git
+# Clone repository
+git clone https://github.com/LuckVd/DeepLLMScanner.git
 cd DeepLLMScanner
 
-# 安装依赖
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# Install dependencies
 pip install -e .
 
-# 或安装开发依赖
+# Install with dev dependencies
 pip install -e ".[dev]"
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 检查系统环境
-
-```bash
-deepllm check
-```
-
-### 2. 测试本地模型（可选）
+### 1. List Available Plugins
 
 ```bash
-# 设置模型路径
-export LLM_MODEL_PATH=/path/to/your/model.gguf
-
-# 测试模型加载
-deepllm test-llm -m /path/to/model.gguf
+python -m src.cli list-plugins
 ```
 
-### 3. 运行扫描
+### 2. Test Local Model (Optional)
 
 ```bash
-# 基础扫描
-deepllm scan https://api.openai.com/v1/chat/completions \
-  --api-key $LLM_API_KEY \
-  --model gpt-3.5-turbo
-
-# 使用本地模型增强
-deepllm scan https://api.openai.com/v1/chat/completions \
-  --api-key $LLM_API_KEY \
-  --llm-model ./models/llama-3-8b.Q4_K_M.gguf \
-  --output report.json
+python -m src.cli test-model -p ./models/qwen2.5-7b-instruct-q3_k_m.gguf
 ```
 
-## 项目结构
+### 3. Test Connection
+
+```bash
+python -m src.cli test-connection -u https://api.openai.com/v1/chat/completions -k $OPENAI_API_KEY
+```
+
+### 4. Run Scan
+
+```bash
+# Basic scan
+python -m src.cli scan -u https://api.openai.com/v1/chat/completions -k $OPENAI_API_KEY
+
+# With local model for enhanced detection
+python -m src.cli scan \
+  -u https://api.openai.com/v1/chat/completions \
+  -k $OPENAI_API_KEY \
+  -p ./models/qwen2.5-7b-instruct-q3_k_m.gguf \
+  -o report.html \
+  -f html
+
+# Specific plugins only
+python -m src.cli scan \
+  -u https://api.example.com/v1/chat \
+  -k $API_KEY \
+  --plugins llm01,llm07
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `scan` | Run security scan on target API |
+| `list-plugins` | List all available security plugins |
+| `test-connection` | Test connection to target API |
+| `test-model` | Test local GGUF model loading |
+
+### Scan Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-u, --url` | Target API URL | Required |
+| `-k, --api-key` | API key | env: OPENAI_API_KEY |
+| `-m, --model` | Target model name | gpt-3.5-turbo |
+| `-p, --model-path` | Local GGUF model path | None |
+| `--mode` | Scan mode (quick/standard/deep) | quick |
+| `--plugins` | Comma-separated plugin IDs | all |
+| `-o, --output` | Output file path | stdout |
+| `-f, --format` | Output format (json/html) | json |
+| `-v, --verbose` | Verbose output | False |
+
+## OWASP LLM Top 10 Coverage
+
+| ID | Plugin | Risk Category |
+|----|--------|---------------|
+| LLM01 | Prompt Injection | Prompt Injection |
+| LLM02 | Data Leak | Sensitive Information Disclosure |
+| LLM03 | Supply Chain | Supply Chain Vulnerabilities |
+| LLM04 | Data Poisoning | Data and Model Poisoning |
+| LLM05 | Output Handling | Improper Output Handling |
+| LLM06 | Excessive Agency | Excessive Agency |
+| LLM07 | System Prompt Leak | System Prompt Leakage |
+| LLM08 | Vector Weakness | Vector and Embedding Weaknesses |
+| LLM09 | Misinformation | Misinformation |
+| LLM10 | Unbounded Consumption | Unbounded Consumption |
+
+## Project Structure
 
 ```
 DeepLLMScanner/
 ├── src/
+│   ├── cli.py                    # CLI entry point
 │   ├── core/
-│   │   ├── controller/      # 扫描控制器
-│   │   ├── execution_engine/ # HTTP 执行引擎
-│   │   ├── detection_engine/ # 检测引擎 (L1/L2/L3)
-│   │   ├── validation_engine/ # 验证引擎
-│   │   └── ...
+│   │   ├── controller/           # Scan controller
+│   │   ├── execution_engine/     # HTTP execution engine
+│   │   ├── state_engine/         # Multi-turn conversation state
+│   │   ├── validation_engine/    # Vulnerability validation
+│   │   ├── scoring_engine/       # Risk scoring
+│   │   └── reporting/            # JSON/HTML reports
 │   ├── runtime/
-│   │   ├── llm_runtime/     # 本地 LLM 运行时
-│   │   └── embedding_runtime/ # Embedding 运行时
-│   ├── plugins/             # OWASP LLM Top 10 插件
-│   └── deepllm_scanner/     # CLI 入口
+│   │   └── llm_runtime/          # Local LLM runtime (llama.cpp)
+│   └── plugins/                  # OWASP LLM Top 10 plugins
+│       ├── LLM01_prompt_injection/
+│       ├── LLM02_data_leak/
+│       ├── ...
+│       └── LLM10_unbounded_consumption/
 ├── tests/
+│   ├── test_e2e.py              # End-to-end tests
+│   ├── test_state_engine.py     # State engine tests
+│   └── ...
+├── examples/
+│   └── config.yaml              # Example configuration
 └── docs/
 ```
 
-## 开发阶段
+## Development Status
 
-| 阶段 | 目标 | 状态 |
-|------|------|------|
-| Phase 0 | 基础运行层 | ✅ 完成 |
-| Phase 1 | MVP 扫描器 (LLM01/02/07) | 🚧 进行中 |
-| Phase 2 | 增强能力 + 全风险覆盖 | 📋 计划中 |
-| Phase 3 | 高级能力 + 进化算法 | 📋 计划中 |
+| Phase | Goal | Status |
+|-------|------|--------|
+| Phase 0 | Basic Runtime Layer | Completed |
+| Phase 1 | MVP Scanner (LLM01/02/07) | Completed |
+| Phase 2 | Multi-turn Attacks + Full Coverage | Completed |
+| Phase 3 | Advanced Capabilities + Evolution | Planned |
 
-## 环境变量
+## Environment Variables
 
-| 变量 | 描述 |
-|------|------|
-| `LLM_API_KEY` | 目标 LLM API 密钥 |
-| `LLM_MODEL_PATH` | 本地 GGUF 模型路径 |
-| `LLM_N_CTX` | 上下文窗口大小（默认 4096） |
-| `LLM_N_THREADS` | CPU 线程数（默认 8） |
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | Target LLM API key |
+| `LLM_MODEL_PATH` | Local GGUF model path |
+| `LLM_N_CTX` | Context window size (default: 4096) |
+| `LLM_N_THREADS` | CPU threads (default: 8) |
+
+## Recommended Local Models
+
+| Model | Size | Memory | Notes |
+|-------|------|--------|-------|
+| Qwen2.5-7B-Instruct Q3_K_M | ~3.6 GB | ~5 GB | Good balance |
+| Mistral-7B-Instruct Q4_K_M | ~4.1 GB | ~6 GB | High accuracy |
+| Llama-2-7B-Chat Q4_K_M | ~3.8 GB | ~5.5 GB | Stable |
+
+## Testing
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run specific test file
+pytest tests/test_e2e.py -v
+
+# Run with coverage
+pytest tests/ --cov=src
+```
 
 ## License
 

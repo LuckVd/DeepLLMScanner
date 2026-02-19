@@ -1,0 +1,56 @@
+# DeepLLMScanner Example Configuration
+# Copy this file and customize for your target API
+
+# Target API Configuration
+target:
+  # URL of the LLM API endpoint (required)
+  url: "https://api.openai.com/v1/chat/completions"
+
+  # API key for authentication (optional, can also use OPENAI_API_KEY env var)
+  api_key: "sk-your-api-key-here"
+
+  # Target model name
+  model: "gpt-3.5-turbo"
+
+  # Request timeout in seconds
+  timeout: 30.0
+
+# Local LLM Configuration (optional, for enhanced detection)
+local_llm:
+  # Path to GGUF model file
+  model_path: "./models/qwen2.5-7b-instruct-q3_k_m.gguf"
+
+  # Context window size
+  n_ctx: 4096
+
+  # Number of CPU threads
+  n_threads: 8
+
+# Scan Configuration
+scan:
+  # Scan mode: quick, standard, deep
+  mode: "quick"
+
+  # List of plugin IDs to run (null = all plugins)
+  # Example: ["llm01_prompt_injection", "llm07_system_prompt_leak"]
+  plugins: null
+
+  # Maximum attacks per plugin
+  max_attacks_per_plugin: 10
+
+  # Maximum total requests
+  max_requests: 50
+
+  # Number of concurrent requests
+  concurrency: 1
+
+# Output Configuration
+output:
+  # Output format: json, html
+  format: "json"
+
+  # Output file path (null = stdout only)
+  path: "report.json"
+
+  # Enable verbose output
+  verbose: false
