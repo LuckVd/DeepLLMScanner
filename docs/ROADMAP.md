@@ -134,68 +134,85 @@ risk_score = severity_weight × confidence × reproducibility × impact_factor
 
 ## 七、开发顺序总表
 
-### Phase 0：基础运行层
+### Phase 0：基础运行层 ✅ COMPLETED
 
 **目标**：能调用目标 API，能调用本地模型，能打印结果
 
 | 顺序 | 模块 | 目标 | 产出 | 状态 |
 |------|------|------|------|------|
-| 1 | llm_runtime | 本地模型加载成功 | 可调用推理接口 | todo |
-| 2 | execution_engine | HTTP 请求成功 | 可返回响应 | todo |
-| 3 | controller | 配置读取成功 | CLI 运行入口 | todo |
+| 1 | llm_runtime | 本地模型加载成功 | 可调用推理接口 | done |
+| 2 | execution_engine | HTTP 请求成功 | 可返回响应 | done |
+| 3 | controller | 配置读取成功 | CLI 运行入口 | done |
 
 **完成标志**：
-- [ ] 能调用目标 API
-- [ ] 能调用本地模型
-- [ ] 能打印结果
+- [x] 能调用目标 API
+- [x] 能调用本地模型
+- [x] 能打印结果
 
 ---
 
-### Phase 1：最小可用扫描器
+### Phase 1：最小可用扫描器 ✅ COMPLETED
 
 **目标**：实现 LLM01/02/07 + JSON 报告
 
 | 顺序 | 模块 | 内容 | 状态 |
 |------|------|------|------|
-| 4 | plugin_system | 插件接口标准 | todo |
-| 5 | attack_engine | 基础模板攻击 | todo |
-| 6 | detection_L1 | regex 检测 | todo |
-| 7 | detection_L3 | LLM 裁决 | todo |
-| 8 | validation_engine | 漏洞重放 | todo |
-| 9 | scoring_engine | 风险计算 | todo |
-| 10 | reporting | JSON 输出 | todo |
-| 11 | LLM01 插件 | Prompt Injection | todo |
-| 12 | LLM02 插件 | 数据泄露 | todo |
-| 13 | LLM07 插件 | 系统提示泄露 | todo |
+| 4 | plugin_system | 插件接口标准 | done |
+| 5 | attack_engine | 基础模板攻击 | done |
+| 6 | detection_L1 | regex 检测 | done |
+| 7 | detection_L3 | LLM 裁决 | done |
+| 8 | validation_engine | 漏洞重放 | done |
+| 9 | scoring_engine | 风险计算 | done |
+| 10 | reporting | JSON 输出 | done |
+| 11 | LLM01 插件 | Prompt Injection | done |
+| 12 | LLM02 插件 | 数据泄露 | done |
+| 13 | LLM07 插件 | 系统提示泄露 | done |
 
 **完成标志**：
-- [ ] 可扫描 3 类风险
-- [ ] 可输出漏洞 JSON
-- [ ] 可复现漏洞
+- [x] 可扫描 3 类风险
+- [x] 可输出漏洞 JSON
+- [x] 可复现漏洞
 
 ---
 
-### Phase 2：增强能力
+### Phase 2：增强能力 ✅ COMPLETED
 
 **目标**：多轮攻击 + Embedding 检测 + 全 10 类覆盖
 
 | 顺序 | 模块 | 内容 | 状态 |
 |------|------|------|------|
-| 14 | state_engine | 多轮对话 | todo |
-| 15 | detection_L2 | Embedding 检测 | todo |
-| 16 | embedding_runtime | 向量生成 | todo |
-| 17 | 变异引擎 | Prompt 多策略扰动 | todo |
-| 18 | 并发控制 | 扫描加速 | todo |
-| 19 | LLM03-LLM06 插件 | 风险实现 | todo |
-| 20 | LLM08-LLM10 插件 | 风险实现 | todo |
+| 14 | state_engine | 多轮对话 | done |
+| 15 | detection_L2 | Embedding 检测 | done |
+| 16 | embedding_runtime | 向量生成 | done |
+| 17 | 变异引擎 | Prompt 多策略扰动 | done |
+| 18 | 并发控制 | 扫描加速 | done |
+| 19 | LLM03-LLM06 插件 | 风险实现 | done |
+| 20 | LLM08-LLM10 插件 | 风险实现 | done |
 
 **完成标志**：
-- [ ] 覆盖 OWASP LLM Top 10
-- [ ] 支持 standard 模式
+- [x] 覆盖 OWASP LLM Top 10
+- [x] 支持 standard 模式
 
 ---
 
-### Phase 3：高级能力
+### Phase 2.5：CLI + E2E 集成测试 ✅ COMPLETED
+
+**目标**：CLI 接口 + 端到端集成测试
+
+| 顺序 | 模块 | 内容 | 状态 |
+|------|------|------|------|
+| 21 | CLI 入口 | scan, list-plugins, test-connection, test-model | done |
+| 22 | E2E 测试 | 25 个端到端集成测试 | done |
+| 23 | 示例文档 | examples/config.yaml + README | done |
+
+**完成标志**：
+- [x] CLI 命令可用
+- [x] 280+ 测试全部通过
+- [x] 文档完善
+
+---
+
+### Phase 3：高级能力 🔄 IN PROGRESS
 
 **目标**：deep 模式 + 攻击进化
 
@@ -217,10 +234,11 @@ risk_score = severity_weight × confidence × reproducibility × impact_factor
 ## 八、整体开发节奏
 
 ```
-Week 1        Phase 0: 基础运行层
-Week 2-3      Phase 1: MVP 扫描器 (LLM01/02/07)
-Week 4-6      Phase 2: 全风险覆盖 + 增强能力
-Week 7-8      Phase 3: 深度模式 + 进化算法
+Week 1        Phase 0: 基础运行层 ✅
+Week 2-3      Phase 1: MVP 扫描器 (LLM01/02/07) ✅
+Week 4-6      Phase 2: 全风险覆盖 + 增强能力 ✅
+Week 6-7      Phase 2.5: CLI + E2E 集成测试 ✅
+Week 7-8      Phase 3: 深度模式 + 进化算法 🔄 (进行中)
 ```
 
 ---
@@ -232,19 +250,19 @@ Week 7-8      Phase 3: 深度模式 + 进化算法
 | claude-control | `.claude/**` | done | core |
 | governance-specs | `docs/api/**`, `docs/CURRENT_GOAL.md`, `docs/ROADMAP.md` | done | core |
 | git-history | `docs/git/**` | done | stable |
-| project-docs | `docs/*.md`, `README.md` | todo | active |
-| core-controller | `src/core/controller/**` | todo | active |
-| core-scheduler | `src/core/scheduler/**` | todo | active |
-| core-attack | `src/core/attack_engine/**` | todo | active |
-| core-state | `src/core/state_engine/**` | todo | active |
-| core-execution | `src/core/execution_engine/**` | todo | active |
-| core-detection | `src/core/detection_engine/**` | todo | active |
-| core-validation | `src/core/validation_engine/**` | todo | active |
-| core-scoring | `src/core/scoring_engine/**` | todo | active |
-| core-reporting | `src/core/reporting/**` | todo | active |
-| runtime-llm | `src/runtime/llm_runtime/**` | todo | active |
-| runtime-embedding | `src/runtime/embedding_runtime/**` | todo | active |
-| plugins-owasp | `src/plugins/**` | todo | active |
+| project-docs | `docs/*.md`, `README.md` | done | active |
+| core-controller | `src/core/controller/**` | done | active |
+| core-scheduler | `src/core/scheduler/**` | done | active |
+| core-attack | `src/core/attack_engine/**` | done | active |
+| core-state | `src/core/state_engine/**` | done | active |
+| core-execution | `src/core/execution_engine/**` | done | active |
+| core-detection | `src/core/detection_engine/**` | done | active |
+| core-validation | `src/core/validation_engine/**` | done | active |
+| core-scoring | `src/core/scoring_engine/**` | done | active |
+| core-reporting | `src/core/reporting/**` | done | active |
+| runtime-llm | `src/runtime/llm_runtime/**` | done | active |
+| runtime-embedding | `src/runtime/embedding_runtime/**` | done | active |
+| plugins-owasp | `src/plugins/**` | done | active |
 
 ---
 
@@ -270,9 +288,10 @@ DeepLLMScanner 最终应具备：
 
 | 字段 | 值 |
 |------|-----|
-| **阶段** | Phase 0 |
-| **目标** | 基础运行层 - 能调用 API、能调用模型、能打印结果 |
-| **重点模块** | llm_runtime, execution_engine, controller |
+| **阶段** | Phase 3 |
+| **目标** | 高级能力 - deep 模式 + 攻击进化 |
+| **重点模块** | 多次稳定验证, HTML 报告, 进化算法 |
+| **测试覆盖** | 302 passed, 8 skipped |
 
 ---
 
@@ -280,10 +299,10 @@ DeepLLMScanner 最终应具备：
 
 | 类型 | 描述 | 影响 | 状态 |
 |------|------|------|------|
-| 依赖 | llama-cpp-python | 高 | 待确认 |
-| 依赖 | sentence-transformers | 中 | 待确认 |
-| 风险 | CPU 推理性能 | 中 | 待评估 |
-| 风险 | 模型内存占用 | 高 | 待优化 |
+| 依赖 | llama-cpp-python | 高 | ✅ 已集成 |
+| 依赖 | sentence-transformers | 中 | ✅ 已集成 |
+| 风险 | CPU 推理性能 | 中 | ✅ 已优化 (4bit 量化) |
+| 风险 | 模型内存占用 | 高 | ✅ 已优化 (GGUF 格式) |
 
 ---
 

@@ -51,7 +51,7 @@
 | core-scoring | `src/core/scoring_engine/**` | dev | active |
 | core-reporting | `src/core/reporting/**` | dev | active |
 | runtime-llm | `src/runtime/llm_runtime/**` | todo | active |
-| runtime-embedding | `src/runtime/embedding_runtime/**` | todo | active |
+| runtime-embedding | `src/runtime/embedding_runtime/**` | done | active |
 | plugins-owasp | `src/plugins/**` | dev | active |
 
 ---
