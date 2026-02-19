@@ -61,6 +61,8 @@ class Scanner:
                 target_url=self.config.target_url,
                 api_key=self.config.api_key,
                 model=self.config.model,
+                llm_model_path=self.config.llm_model_path,
+                use_llm_judge=self.config.use_llm_judge,
             )
         return self._executor
 

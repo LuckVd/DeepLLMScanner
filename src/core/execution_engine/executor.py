@@ -42,6 +42,8 @@ class AttackExecutor:
         api_key: Optional[str] = None,
         model: str = "gpt-3.5-turbo",
         request_config: Optional[RequestConfig] = None,
+        llm_model_path: Optional[str] = None,
+        use_llm_judge: bool = True,
     ):
         """Initialize the attack executor.
 
@@ -50,6 +52,8 @@ class AttackExecutor:
             api_key: Optional API key for authentication.
             model: Target model name (e.g., "deepseek-chat", "gpt-4").
             request_config: HTTP request configuration.
+            llm_model_path: Path to local GGUF model for LLM Judge.
+            use_llm_judge: Whether to use LLM Judge for validation.
         """
         self.target_url = target_url
         self.api_key = api_key
@@ -60,6 +64,30 @@ class AttackExecutor:
         self._plugins: dict[str, BasePlugin] = {}
         self._context: Optional[ExecutionContext] = None
         self._execution_records: list[AttackExecutionRecord] = []
+
+        # Initialize LLM Judge if model path is provided
+        if llm_model_path and use_llm_judge:
+            self._init_llm_judge(llm_model_path)
+
+    def _init_llm_judge(self, model_path: str) -> bool:
+        """Initialize the global LLM Judge instance."""
+        try:
+            from src.core.detection_engine import get_judge, reset_judge
+
+            # Reset any existing judge first
+            reset_judge()
+
+            # Create new judge with model path
+            judge = get_judge(model_path)
+            if judge.is_enabled():
+                console.print(f"[green]+[/green] LLM Judge enabled for validation")
+                return True
+            else:
+                console.print(f"[yellow]![/yellow] LLM Judge initialization failed")
+                return False
+        except Exception as e:
+            console.print(f"[yellow]![/yellow] LLM Judge error: {e}")
+            return False
 
     def register_plugin(self, plugin: BasePlugin) -> None:
         """Register a plugin for execution.
@@ -231,41 +259,33 @@ class AttackExecutor:
 
         console.print(f"[cyan]Executing {len(attacks)} attacks for {plugin.name}...[/cyan]")
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task(f"[cyan]{plugin.id}", total=len(attacks))
+        # Use simple progress without Unicode characters for Windows compatibility
+        for i, attack in enumerate(attacks):
+            console.print(f"  [dim]{plugin.id} [{i+1}/{len(attacks)}][/dim]")
 
-            for i, attack in enumerate(attacks):
-                progress.update(task, advance=1, description=f"[cyan]{plugin.id} [{i+1}/{len(attacks)}]")
+            record = self.execute_attack(
+                attack=attack,
+                plugin=plugin,
+                context=context,
+                attack_context=attack_context,
+            )
 
-                record = self.execute_attack(
-                    attack=attack,
-                    plugin=plugin,
-                    context=context,
-                    attack_context=attack_context,
-                )
+            self._execution_records.append(record)
 
-                self._execution_records.append(record)
+            # Convert record to AttackResult for ScanResult
+            result = AttackResult(
+                attack=attack,
+                success=record.detected,
+                response=record.response_body,
+                detected=record.detected,
+                confidence=record.confidence,
+                evidence=record.evidence,
+                error=record.error,
+            )
+            results.append(result)
 
-                # Convert record to AttackResult for ScanResult
-                result = AttackResult(
-                    attack=attack,
-                    success=record.detected,
-                    response=record.response_body,
-                    detected=record.detected,
-                    confidence=record.confidence,
-                    evidence=record.evidence,
-                    error=record.error,
-                )
-                results.append(result)
-
-                if record.detected:
-                    successful += 1
+            if record.detected:
+                successful += 1
 
         # Create scan result
         scan_result = ScanResult(

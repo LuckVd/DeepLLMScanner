@@ -34,6 +34,10 @@ class ScanConfig(BaseModel):
         default=8,
         description="Number of CPU threads for local model"
     )
+    use_llm_judge: bool = Field(
+        default=True,
+        description="Use local LLM to validate detection results and reduce false positives"
+    )
 
     # Scan settings
     scan_mode: Literal["quick", "standard", "deep"] = Field(

@@ -74,7 +74,7 @@ class PluginConfig(BaseModel):
         description="Minimum confidence to report vulnerability (0.0-1.0)"
     )
     use_llm_judge: bool = Field(
-        default=False,
+        default=True,
         description="Use LLM judge for secondary validation"
     )
     severity_override: Optional[AttackSeverity] = Field(
