@@ -87,7 +87,7 @@ API 文件变更时：
 
 | 日期 | Commit | 描述 |
 |------|--------|------|
-| - | - | （暂无提交记录） |
+| 2026-02-19 | 85bc20f | feat: improve LLM07 detection accuracy with multi-layer approach |
 
 ---
 

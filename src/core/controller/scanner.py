@@ -225,6 +225,14 @@ class Scanner:
 
         # Add plugin results
         for result in scan_results:
+            # Calculate risk scores for detected vulnerabilities
+            plugin = registry.get_plugin(result.plugin_id)
+            if plugin:
+                for attack_result in result.results:
+                    if attack_result.detected:
+                        # Use the new process_result method for validation and scoring
+                        plugin.process_result(attack_result, validate=False, calculate_risk=True)
+
             plugin_report = {
                 "plugin_id": result.plugin_id,
                 "category": result.category.value,
@@ -232,6 +240,23 @@ class Scanner:
                 "vulnerabilities_found": result.vulnerabilities_found,
                 "success_rate": round(result.success_rate, 2),
             }
+
+            # Add risk summary if available
+            risk_scores = [r.risk_score for r in result.results if r.detected and r.risk_score]
+            if risk_scores:
+                from src.core.scoring_engine import RiskLevel
+                plugin_report["risk_summary"] = {
+                    "total_scored": len(risk_scores),
+                    "average_score": round(sum(s.score for s in risk_scores) / len(risk_scores), 2),
+                    "max_score": max(s.score for s in risk_scores),
+                    "by_level": {
+                        "critical": len([s for s in risk_scores if s.level == RiskLevel.CRITICAL]),
+                        "high": len([s for s in risk_scores if s.level == RiskLevel.HIGH]),
+                        "medium": len([s for s in risk_scores if s.level == RiskLevel.MEDIUM]),
+                        "low": len([s for s in risk_scores if s.level == RiskLevel.LOW]),
+                    },
+                }
+
             report["plugins"].append(plugin_report)
 
             # Add vulnerability details
@@ -245,6 +270,24 @@ class Scanner:
                         "confidence": attack_result.confidence,
                         "evidence": attack_result.evidence,
                     }
+
+                    # Add risk score if available
+                    if attack_result.risk_score:
+                        vuln["risk_score"] = {
+                            "score": attack_result.risk_score.score,
+                            "level": attack_result.risk_score.level.value,
+                            "priority": attack_result.risk_score.priority.value,
+                            "breakdown": attack_result.risk_score.breakdown,
+                        }
+
+                    # Add validation result if available
+                    if attack_result.validation:
+                        vuln["validation"] = {
+                            "status": attack_result.validation.status.value,
+                            "reproducibility": attack_result.validation.reproducibility,
+                            "method": attack_result.validation.validation_method.value if attack_result.validation.validation_method else None,
+                        }
+
                     report["vulnerabilities"].append(vuln)
 
         # Print summary

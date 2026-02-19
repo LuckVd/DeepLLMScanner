@@ -13,6 +13,19 @@ from src.core.attack_engine import (
     AttackSeverity,
     GeneratedAttack,
 )
+from src.core.validation_engine import (
+    VulnerabilityValidator,
+    ValidationResult,
+    ValidationStatus,
+    get_validator,
+)
+from src.core.scoring_engine import (
+    RiskScorer,
+    RiskScore,
+    RiskLevel,
+    Priority,
+    get_scorer,
+)
 
 
 class PluginPriority(str, Enum):
@@ -102,6 +115,14 @@ class AttackResult(BaseModel):
     evidence: dict[str, Any] = Field(default_factory=dict, description="Evidence of vulnerability")
     error: Optional[str] = Field(default=None, description="Error message if any")
 
+    # Validation and scoring results (populated after validation)
+    validation: Optional["ValidationResult"] = Field(
+        default=None, description="Validation result if validated"
+    )
+    risk_score: Optional["RiskScore"] = Field(
+        default=None, description="Risk score if calculated"
+    )
+
 
 class ScanResult(BaseModel):
     """Result of a complete plugin scan."""
@@ -114,12 +135,39 @@ class ScanResult(BaseModel):
     results: list[AttackResult] = Field(default_factory=list, description="Individual results")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
+    # Risk scoring summary
+    risk_summary: Optional[dict[str, Any]] = Field(
+        default=None, description="Risk score summary statistics"
+    )
+
     @property
     def success_rate(self) -> float:
         """Calculate attack success rate."""
         if self.total_attacks == 0:
             return 0.0
         return self.successful_attacks / self.total_attacks
+
+    def get_vulnerabilities_by_risk(self, min_level: RiskLevel = RiskLevel.HIGH) -> list[AttackResult]:
+        """Get vulnerabilities filtered by minimum risk level.
+
+        Args:
+            min_level: Minimum risk level to include.
+
+        Returns:
+            List of attack results meeting the risk threshold.
+        """
+        level_order = {
+            RiskLevel.LOW: 0,
+            RiskLevel.MEDIUM: 1,
+            RiskLevel.HIGH: 2,
+            RiskLevel.CRITICAL: 3,
+        }
+        min_order = level_order.get(min_level, 0)
+
+        return [
+            r for r in self.results
+            if r.detected and r.risk_score and level_order.get(r.risk_score.level, 0) >= min_order
+        ]
 
 
 class BasePlugin(ABC):
@@ -136,6 +184,8 @@ class BasePlugin(ABC):
         """
         self.config = config or PluginConfig()
         self._generator: Optional[AttackGenerator] = None
+        self._validator: Optional[VulnerabilityValidator] = None
+        self._scorer: Optional[RiskScorer] = None
         self._status = PluginStatus.ENABLED if self.config.enabled else PluginStatus.DISABLED
 
     @property
@@ -210,20 +260,52 @@ class BasePlugin(ABC):
         self,
         result: AttackResult,
         context: Optional[AttackContext] = None,
-    ) -> bool:
+    ) -> ValidationResult:
         """Validate that the detected vulnerability is real.
 
-        This method can be overridden to implement replay validation.
+        Uses the independent validation engine for consistent validation.
 
         Args:
             result: The attack result to validate.
             context: Optional attack context.
 
         Returns:
-            True if vulnerability is validated, False otherwise.
+            ValidationResult with validation status and details.
         """
-        # Default implementation - trust the detection
-        return result.detected and result.confidence >= 0.7
+        if not result.detected:
+            # No need to validate non-detections
+            return ValidationResult(
+                original_result=result,
+                status=ValidationStatus.UNCONFIRMED,
+                reproducibility=0.0,
+                validation_method=None,
+                notes="No vulnerability detected, validation skipped",
+            )
+
+        validator = self._get_validator()
+        return validator.validate(result)
+
+    def calculate_risk_score(
+        self,
+        result: AttackResult,
+        validation: Optional[ValidationResult] = None,
+        impact_factor: Optional[float] = None,
+    ) -> RiskScore:
+        """Calculate risk score for a detected vulnerability.
+
+        Uses the standardized risk scoring formula:
+        risk_score = severity_weight × confidence × reproducibility × impact_factor
+
+        Args:
+            result: The attack result to score.
+            validation: Optional validation result for reproducibility.
+            impact_factor: Optional impact factor (0-1).
+
+        Returns:
+            RiskScore with breakdown.
+        """
+        scorer = self._get_scorer()
+        return scorer.calculate(result, validation, impact_factor)
 
     def calculate_severity(
         self,
@@ -231,6 +313,9 @@ class BasePlugin(ABC):
         context: Optional[AttackContext] = None,
     ) -> AttackSeverity:
         """Calculate severity for a detected vulnerability.
+
+        This method is kept for backward compatibility but now delegates
+        to the scoring engine.
 
         Args:
             result: The attack result.
@@ -242,12 +327,13 @@ class BasePlugin(ABC):
         if self.config.severity_override:
             return self.config.severity_override
 
-        # Default severity based on confidence
-        if result.confidence >= 0.9:
+        # Use risk score to determine severity
+        risk_score = self.calculate_risk_score(result)
+        if risk_score.level == RiskLevel.CRITICAL:
             return AttackSeverity.CRITICAL
-        elif result.confidence >= 0.7:
+        elif risk_score.level == RiskLevel.HIGH:
             return AttackSeverity.HIGH
-        elif result.confidence >= 0.5:
+        elif risk_score.level == RiskLevel.MEDIUM:
             return AttackSeverity.MEDIUM
         return AttackSeverity.LOW
 
@@ -300,6 +386,60 @@ class BasePlugin(ABC):
         if self._generator is None:
             self._generator = AttackGenerator()
         return self._generator
+
+    def _get_validator(self) -> VulnerabilityValidator:
+        """Get or create vulnerability validator.
+
+        Returns:
+            VulnerabilityValidator instance.
+        """
+        if self._validator is None:
+            self._validator = get_validator()
+        return self._validator
+
+    def _get_scorer(self) -> RiskScorer:
+        """Get or create risk scorer.
+
+        Returns:
+            RiskScorer instance.
+        """
+        if self._scorer is None:
+            self._scorer = get_scorer()
+        return self._scorer
+
+    def process_result(
+        self,
+        result: AttackResult,
+        validate: bool = True,
+        calculate_risk: bool = True,
+    ) -> AttackResult:
+        """Process an attack result with optional validation and scoring.
+
+        Args:
+            result: The attack result to process.
+            validate: Whether to validate the result.
+            calculate_risk: Whether to calculate risk score.
+
+        Returns:
+            Updated AttackResult with validation and risk score.
+        """
+        if result.detected:
+            if validate:
+                result.validation = self.validate_vulnerability(result)
+                # Update confidence based on validation
+                if result.validation.status == ValidationStatus.FALSE_POSITIVE:
+                    result.detected = False
+                    result.confidence = 0.0
+                elif result.validation.status == ValidationStatus.CONFIRMED:
+                    result.confidence = min(1.0, result.confidence + 0.1)
+
+            if calculate_risk and result.detected:
+                result.risk_score = self.calculate_risk_score(
+                    result,
+                    validation=result.validation,
+                )
+
+        return result
 
     def __repr__(self) -> str:
         """String representation of the plugin."""
