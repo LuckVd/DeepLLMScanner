@@ -18,6 +18,13 @@ from ..execution_engine import (
     ExecutionClient,
     LLMRequest,
 )
+from ..reporting import (
+    JSONReporter,
+    HTMLReporter,
+    ReportData,
+    VulnerabilityRecord,
+    PluginSummary,
+)
 from src.plugins.base import ScanResult
 from src.plugins.registry import PluginRegistry, get_registry
 
@@ -357,11 +364,106 @@ class Scanner:
         console.print("\n" + "=" * 60)
 
     def _save_report(self, report: dict[str, Any]) -> None:
-        """Save report to file."""
+        """Save report to file.
+
+        Supports multiple formats based on file extension:
+        - .json: JSON report
+        - .html: HTML report
+        - .json+html (or no extension): Both formats
+        """
         output_path = Path(self.config.output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
+        # Determine output format from extension
+        suffix = output_path.suffix.lower()
 
-        console.print(f"\n[green]Report saved to:[/green] {output_path}")
+        # Build ReportData from report dict
+        report_data = self._build_report_data(report)
+
+        if suffix == ".json":
+            # JSON only
+            reporter = JSONReporter()
+            reporter.generate(report_data, str(output_path))
+            console.print(f"\n[green]Report saved to:[/green] {output_path}")
+
+        elif suffix == ".html":
+            # HTML only
+            reporter = HTMLReporter()
+            reporter.generate(report_data, str(output_path))
+            console.print(f"\n[green]HTML report saved to:[/green] {output_path}")
+
+        else:
+            # Default: generate both JSON and HTML
+            json_path = output_path.with_suffix(".json") if suffix else output_path.parent / f"{output_path.stem}.json"
+            html_path = output_path.with_suffix(".html") if suffix else output_path.parent / f"{output_path.stem}.html"
+
+            # Generate JSON
+            json_reporter = JSONReporter()
+            json_reporter.generate(report_data, str(json_path))
+            console.print(f"\n[green]JSON report saved to:[/green] {json_path}")
+
+            # Generate HTML
+            html_reporter = HTMLReporter()
+            html_reporter.generate(report_data, str(html_path))
+            console.print(f"[green]HTML report saved to:[/green] {html_path}")
+
+    def _build_report_data(self, report: dict[str, Any]) -> ReportData:
+        """Build ReportData from report dictionary."""
+        # Parse timestamps
+        start_time = datetime.fromisoformat(report["start_time"])
+        end_time = datetime.fromisoformat(report["end_time"])
+
+        # Build vulnerability records
+        vulnerabilities = []
+        for vuln in report.get("vulnerabilities", []):
+            risk_score = None
+            risk_level = None
+            priority = None
+
+            if "risk_score" in vuln:
+                risk_score = vuln["risk_score"]["score"]
+                risk_level = vuln["risk_score"]["level"]
+                priority = vuln["risk_score"]["priority"]
+
+            validation_passed = None
+            if "validation" in vuln:
+                validation_passed = vuln["validation"].get("reproducible", 1.0) >= 0.8
+
+            vulnerabilities.append(VulnerabilityRecord(
+                id=f"{vuln['plugin_id']}-{len(vulnerabilities) + 1}",
+                plugin_id=vuln["plugin_id"],
+                category=vuln["category"],
+                payload=vuln["payload"],
+                response=vuln.get("response", ""),
+                confidence=vuln["confidence"],
+                evidence=vuln.get("evidence", {}),
+                risk_score=risk_score,
+                risk_level=risk_level,
+                priority=priority,
+                validation_passed=validation_passed,
+            ))
+
+        # Build plugin summaries
+        plugin_summaries = []
+        for plugin in report.get("plugins", []):
+            plugin_summaries.append(PluginSummary(
+                plugin_id=plugin["plugin_id"],
+                category=plugin["category"],
+                total_attacks=plugin["total_attacks"],
+                vulnerabilities_found=plugin["vulnerabilities_found"],
+                success_rate=plugin["success_rate"],
+                risk_summary=plugin.get("risk_summary"),
+            ))
+
+        return ReportData(
+            scan_id=report["scan_id"],
+            target_url=report["config"]["target_url"],
+            model=report["config"]["model"],
+            scan_mode=report["config"]["scan_mode"],
+            start_time=start_time,
+            end_time=end_time,
+            vulnerabilities=vulnerabilities,
+            plugin_summaries=plugin_summaries,
+            config=report.get("config", {}),
+            local_llm=report.get("local_llm", {}),
+        )
