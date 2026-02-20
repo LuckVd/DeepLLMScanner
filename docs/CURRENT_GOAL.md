@@ -8,7 +8,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| **任务** | 补全 embedding_runtime 模块 - 实现 Detection L2 层向量相似度检测 |
+| **任务** | 实现多次稳定验证模块 - 减少漏洞误报率 |
 | **状态** | completed |
 | **优先级** | high |
 | **创建日期** | 2026-02-20 |
@@ -18,12 +18,12 @@
 
 ## 完成标准
 
-- [ ] 创建 `src/runtime/embedding_runtime/` 目录结构
-- [ ] 实现 Embedding 加载器 (sentence-transformers)
-- [ ] 实现文本向量化和相似度计算接口
-- [ ] 集成到 LLM07/LLM08 插件的检测逻辑
-- [ ] 编写单元测试
-- [ ] 更新文档
+- [x] 设计多次验证策略 (重复执行 + 变体验证)
+- [x] 实现 `StabilityValidator` 类
+- [x] 集成到现有 `validation_engine`
+- [x] 添加配置选项 (验证次数、间隔、阈值)
+- [x] 编写单元测试
+- [x] 更新文档
 
 ---
 
@@ -31,13 +31,12 @@
 
 | 序号 | 任务 | 产出 | 状态 |
 |------|------|------|------|
-| 1 | 创建目录结构 | `src/runtime/embedding_runtime/__init__.py` | completed |
-| 2 | 实现 Embedding 加载器 | `src/runtime/embedding_runtime/loader.py` | completed |
-| 3 | 实现相似度计算 | `src/runtime/embedding_runtime/similarity.py` | completed |
-| 4 | 集成到检测引擎 | 更新 LLM07 插件 | completed |
-| 5 | 更新 LLM07 插件 | 使用 Embedding 检测 (L2 层) | completed |
-| 6 | 编写单元测试 | `tests/test_embedding_runtime.py` (22 个测试) | completed |
-| 7 | 更新文档 | README + PROJECT.md | pending |
+| 1 | 设计验证策略 | 多次验证流程设计文档 | completed |
+| 2 | 实现 StabilityValidator | `src/core/validation_engine/stability.py` | completed |
+| 3 | 集成到 validation_engine | 更新 __init__.py 导出 | completed |
+| 4 | 添加配置支持 | StabilityConfig 类 | completed |
+| 5 | 编写单元测试 | `tests/test_stability_validator.py` (31 个测试) | completed |
+| 6 | 更新文档 | README + PROJECT.md | completed |
 
 ---
 
@@ -45,57 +44,85 @@
 
 | 时间 | 进展 |
 |------|------|
-| 2026-02-20 | 🎯 目标设置：补全 embedding_runtime 模块 |
-| 2026-02-20 | ✅ 创建目录结构和 __init__.py |
-| 2026-02-20 | ✅ 实现 EmbeddingLoader 类 (sentence-transformers 加载) |
-| 2026-02-20 | ✅ 实现 SimilarityCalculator 类 (余弦相似度、批量计算、语料索引) |
-| 2026-02-20 | ✅ 集成到 LLM07 插件 (添加 L2 Embedding 检测层) |
-| 2026-02-20 | ✅ 编写 22 个单元测试 (全部通过) |
-| 2026-02-20 | ✅ 302 个总测试全部通过 |
+| 2026-02-20 | 🎯 目标设置：实现多次稳定验证模块 |
+| 2026-02-20 | ✅ 设计验证策略 (REPLAY/VARIANT/HYBRID/PROGRESSIVE) |
+| 2026-02-20 | ✅ 实现 StabilityValidator 核心类 |
+| 2026-02-20 | ✅ 实现 StabilityConfig 配置类 |
+| 2026-02-20 | ✅ 实现 StabilityResult 结果类 |
+| 2026-02-20 | ✅ 更新 validation_engine/__init__.py 导出 |
+| 2026-02-20 | ✅ 编写 31 个单元测试 (全部通过) |
+| 2026-02-20 | ✅ 333 个总测试全部通过 |
+| 2026-02-20 | ✅ 更新 README 文档 (添加 Validation System 章节) |
+| 2026-02-20 | ✅ 更新 PROJECT.md (core-validation 状态改为 stable) |
+| 2026-02-20 | ✅ 目标完成 |
 
 ---
 
 ## 技术设计
 
-### 目录结构
+### 多次验证策略
 
 ```
-src/runtime/embedding_runtime/
-├── __init__.py        # 模块导出
-├── loader.py          # Embedding 模型加载
-└── similarity.py      # 相似度计算
+第一次验证 (原始攻击)
+    ↓
+漏洞检测到?
+    ↓ Yes
+第二次验证 (相同攻击重放)
+    ↓
+漏洞复现?
+    ↓ Yes
+第三次验证 (变体攻击)
+    ↓
+漏洞确认 (高置信度)
 ```
 
-### 核心类
+### 核心类设计
 
 ```python
-# loader.py
-class EmbeddingLoader:
-    - load(model_name: str)  # 加载 sentence-transformers 模型
-    - encode(text: str) -> np.ndarray  # 文本向量化
-    - encode_batch(texts: list) -> np.ndarray  # 批量向量化
+@dataclass
+class StabilityConfig:
+    enabled: bool = True
+    min_validations: int = 2       # 最少验证次数
+    max_validations: int = 3       # 最多验证次数
+    required_consistency: float = 0.66  # 一致性阈值 (2/3)
+    retry_delay: float = 0.5       # 重试间隔 (秒)
+    variant_on_retry: bool = True  # 重试时使用变体
 
-# similarity.py
-class SimilarityCalculator:
-    - cosine_similarity(vec1, vec2) -> float
-    - batch_similarity(query, corpus) -> list[float]
-    - find_similar(query, corpus, threshold) -> list[tuple]
+class StabilityValidator:
+    def __init__(self, config: StabilityConfig)
+    def validate(self, attack, response, detection_result) -> StabilityResult
+    def validate_with_retries(self, attack_func, detection_func) -> StabilityResult
+
+@dataclass
+class StabilityResult:
+    is_stable: bool              # 漏洞是否稳定可复现
+    confidence: float            # 置信度 (0-1)
+    validation_count: int        # 实际验证次数
+    successful_count: int        # 成功复现次数
+    attempts: list[ValidationAttempt]  # 每次验证详情
 ```
 
-### 依赖
+### 验证流程
 
-- `sentence-transformers` - Embedding 模型加载
-- `numpy` - 向量运算
-
-### 默认模型
-
-- `all-MiniLM-L6-v2` - 轻量级，CPU 友好，384 维向量
+1. **首次检测**: 使用原始攻击检测漏洞
+2. **重复验证**: 相同攻击重放 N 次
+3. **变体验证**: (可选) 使用攻击变体验证
+4. **一致性计算**: successful_count / validation_count >= threshold
+5. **结果判定**: 稳定漏洞 / 不稳定 / 误报
 
 ---
 
 ## 关联模块
 
-- `src/runtime/embedding_runtime/` - 本次实现
-- `src/core/detection_engine/` - 集成使用
-- `src/plugins/LLM07_system_prompt_leak/` - 优先集成
-- `src/plugins/LLM08_vector_weakness/` - 后续集成
+- `src/core/validation_engine/` - 主要修改位置
+- `src/core/controller/` - 配置集成
+- `src/core/attack_engine/` - 变体生成
+- `tests/test_validation_engine.py` - 测试扩展
+
+---
+
+## 预期收益
+
+- 减少误报率 (通过多次验证确认)
+- 提高漏洞可信度 (稳定性评分)
+- 支持不同扫描模式配置 (quick/standard/deep)

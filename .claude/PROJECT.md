@@ -47,11 +47,11 @@
 | core-state | `src/core/state_engine/**` | dev | active |
 | core-execution | `src/core/execution_engine/**` | todo | active |
 | core-detection | `src/core/detection_engine/**` | todo | active |
-| core-validation | `src/core/validation_engine/**` | dev | active |
+| core-validation | `src/core/validation_engine/**` | done | stable |
 | core-scoring | `src/core/scoring_engine/**` | dev | active |
 | core-reporting | `src/core/reporting/**` | dev | active |
 | runtime-llm | `src/runtime/llm_runtime/**` | todo | active |
-| runtime-embedding | `src/runtime/embedding_runtime/**` | done | active |
+| runtime-embedding | `src/runtime/embedding_runtime/**` | done | stable |
 | plugins-owasp | `src/plugins/**` | dev | active |
 
 ---
@@ -87,6 +87,7 @@ API 文件变更时：
 
 | 日期 | Commit | 描述 |
 |------|--------|------|
+| 2026-02-20 | 55cacdc | feat: implement embedding_runtime module for L2 detection layer |
 | 2026-02-19 | f43e913 | feat: implement Phase 2 - multi-turn attacks and full OWASP LLM Top 10 coverage |
 | 2026-02-19 | 85bc20f | feat: improve LLM07 detection accuracy with multi-layer approach |
 
@@ -114,7 +115,7 @@ API 文件变更时：
 
 > 当前开发目标独立维护，详见 `docs/CURRENT_GOAL.md`
 
-**当前阶段**：Phase 2 - 多轮攻击 + 全 10 类覆盖 (completed)
+**当前阶段**：Phase 3 - 高级能力 + 进化算法 (in_progress)
 
 **快速操作：**
 - 查看目标：`/goal`
